@@ -12,9 +12,9 @@ requirements = [
 ]
 
 setup(
-    name='gammanet',
+    name='u-pred-net',
     version='0.1.0',
-    url='https://github.com/mschrimpf/U-Net-Pred',
+    url='https://github.com/uranc/U-Net-Pred',
     packages=find_packages(exclude=['tests']),
     include_package_data=True,
     install_requires=requirements,

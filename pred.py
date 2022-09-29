@@ -6,14 +6,17 @@ import tensorflow as tf
 from scipy.stats import pearsonr
 from tensorflow.keras import backend as K
 from model.model_fn import build_compile_model
-
+from tensorflow.keras import applications
 
 parser = argparse.ArgumentParser(
     description='gamma-net predicts log10 gamma power for a given image')
 parser.add_argument('--input', type=str, nargs=1,
                     help='input size 84x84 .png or .npy', default='examples/sample.png')
+parser.add_argument('--output', type=str, nargs=1,
+                    help='output predictability type "structure" or "content"', default='structure')
 args = parser.parse_args()
 input_name = args.input[0]
+flag_LPIPS = args.output[0]=='content'
 
 # params
 params = {'weight_dir': 'weights.last.h5', 'lr': 1.56*1e-4,
@@ -73,17 +76,24 @@ for ii in range(NO_INPUT):
     this_input[ii, :, :, :] += [103.939, 116.779, 123.68]
     img[img < 0] = 0
     img[img > 255] = 255
-    img = img[ii,:,:,::-1]
+    img = img[:,:,::-1]
     this_input[ii, :, :, :] = this_input[ii,:,:,::-1]
 
-# predictability
+# structure predictability
 predictability = np.zeros((NO_INPUT, ))
-for ii in range(NO_INPUT):
-    predictability[ii] = pearsonr(pred[ii, HALF_SIZE-PXD:HALF_SIZE+PXD, HALF_SIZE-PXD:HALF_SIZE+PXD,:].flatten(), 
-                                  this_input[ii, HALF_SIZE-PXD:HALF_SIZE+PXD, HALF_SIZE-PXD:HALF_SIZE+PXD,:].flatten())[0]
+if not flag_LPIPS:
+    for ii in range(NO_INPUT):
+        predictability[ii] = pearsonr(pred[ii, HALF_SIZE-PXD:HALF_SIZE+PXD, HALF_SIZE-PXD:HALF_SIZE+PXD,:].flatten(), 
+                                    this_input[ii, HALF_SIZE-PXD:HALF_SIZE+PXD, HALF_SIZE-PXD:HALF_SIZE+PXD,:].flatten())[0]
+else: # LPIPS predictability
+    from LPIPS_VGG import get_LPIPS
+    
+    predictability = np.mean(get_LPIPS(pred[:, HALF_SIZE-PXD:HALF_SIZE+PXD, HALF_SIZE-PXD:HALF_SIZE+PXD,:],
+                                         this_input[:, HALF_SIZE-PXD:HALF_SIZE+PXD, HALF_SIZE-PXD:HALF_SIZE+PXD,:]), axis=0)
 
 # output
 if flag_numpy:
+    print('Predictability', predictability)
     np.save(out_name + '_predictability.npy', predictability)
 else:
-    print('Predictability', predictability[0])
+    print('Predictability', predictability)
